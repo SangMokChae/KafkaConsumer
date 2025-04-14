@@ -1,0 +1,59 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: kafka-consumer-server
+  webflux:
+    static-path-pattern: /**
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017,localhost:27018/?replicaSet=rs0
+      database: chatdb
+
+  r2dbc:
+    url: r2dbc:mysql://localhost:3306/webflux?useUnicode=true&characterEncoding=utf-8&serverZoneId=UTC
+    username: java
+    password: java
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+    consumer:
+      group-id: chat-room-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "kr.co.dataric.common.dto"
+        spring.json.type.mapping:
+          chatRoomRedisDto:kr.co.dataric.common.dto.ChatRoomRedisDto,
+          chatMessageDTO:kr.co.dataric.common.dto.ChatMessageDTO,
+          readReceiptEvent:kr.co.dataric.common.dto.ReadReceiptEvent
+
+  redis:
+    host: 127.0.0.1
+    port: 6379
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    cache: false
+    encoding: UTF-8
+
+jwt:
+  secret: iOaMqTcUVTa0UuNTy4XfYrE9YJuWTUPg0QAWyZazn5iPdlP8GObBRAg4YgaLk2gHQ7DRf71AYj8bml0yhnZXwE9YJuWTUPg0QAWyZazn5iPdlP8GObNTy4XfYrE9YJuWTUPg0QAWyZa
+  access-token-expiration: 1800000
+  refresh-token-expiration: 604800000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
