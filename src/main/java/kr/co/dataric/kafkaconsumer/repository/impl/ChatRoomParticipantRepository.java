@@ -1,4 +1,4 @@
-package kr.co.dataric.kafkaconsumer.service.read;
+package kr.co.dataric.kafkaconsumer.repository.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,9 +1,11 @@
 package kr.co.dataric.kafkaconsumer.service.read;
 
+import kr.co.dataric.kafkaconsumer.repository.impl.ChatRoomParticipantRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -29,5 +31,12 @@ public class ReadReceiptService {
 	public Mono<Integer> calculateUnreadCount(String roomId, Object readCount) {
 		return chatRoomParticipantRepository.getParticipantCount(roomId)
 			.map(total -> Math.max(0, total - (int) readCount));
+	}
+	
+	// 참여자 정보 저장
+	public Flux<String> findAllParticipantsByRoomId(String roomId) {
+		String key = "chatRoom:participants:"+roomId;
+		return redisTemplate.opsForSet().members(key)
+			.doOnNext(userId -> log.debug("참여자 조회 - roomId: {}, userI: {}", roomId, userId));
 	}
 }

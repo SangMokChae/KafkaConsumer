@@ -1,37 +1,43 @@
 package kr.co.dataric.kafkaconsumer.producer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kr.co.dataric.common.dto.ReadCountMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ReadCountProducer {
 	
-	private final ReactiveKafkaProducerTemplate<String, String> kafkaProducer;
+	private final KafkaTemplate<String, Object> kafkaTemplate;
 	private final ObjectMapper objectMapper;
 	
-	public Mono<Void> send(String roomId, String msgId, int readCount) {
+	public Mono<Void> send(ReadCountMessage message) {
 		try {
-			Map<String, Object> payload = Map.of(
-				"roomId", roomId,
-				"msgId", msgId,
-				"readCount", readCount
+			ProducerRecord<String, Object> record = new ProducerRecord<>(
+				"chat.read.count", message.getRoomId(), message
 			);
+			record.headers().add("__TypeId__", "readCountMessage".getBytes(StandardCharsets.UTF_8));
 			
-			String json = objectMapper.writeValueAsString(payload);
+			kafkaTemplate.send(record)
+				.whenComplete((result, ex) -> {
+					if (ex != null) {
+						log.error("❌ Kafka ReadCount 전송 실패", ex);
+					} else {
+						log.info("📨 Kafka ReadCount 전송 완료: {}", message);
+					}
+				});
 			
-			return kafkaProducer.send("chat.read.count", roomId, json)
-				.doOnSuccess(result -> log.info("Kafka ReadCount 전송 완료 : {}", json))
-				.then();
+			return Mono.empty(); // Kafka는 블로킹 기반, Mono는 리액티브 흐름 고려용
 		} catch (Exception e) {
-			log.error("Kafka ReadCount 전송 실패", e);
+			log.error("❌ Kafka ReadCount 전송 예외", e);
 			return Mono.error(e);
 		}
 	}
