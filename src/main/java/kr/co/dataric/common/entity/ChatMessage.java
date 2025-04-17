@@ -1,11 +1,11 @@
 package kr.co.dataric.common.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 @Document(collection = "chat_messages")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatMessage {
 	
 	@Id
@@ -30,9 +31,5 @@ public class ChatMessage {
 	// ✅ 메시지 타입 기본값 설정 (text, img, video, link 등)
 	@Builder.Default
 	private String chatType = "text";
-	
-	@Transient
-	private int totalReceivers;
-	
 }
 

@@ -20,13 +20,6 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
 
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.type.mapping:
-          readCountMessage: kr.co.dataric.common.dto.ReadCountMessage
-
     consumer:
       group-id: chat-room-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -35,10 +28,10 @@ spring:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "kr.co.dataric.common.dto"
         spring.json.type.mapping:
-          chatRoomRedisDto: kr.co.dataric.common.dto.ChatRoomRedisDto,
-          chatMessageDTO: kr.co.dataric.common.dto.ChatMessageDTO,
-          readReceiptEvent: kr.co.dataric.common.dto.ReadReceiptEvent,
-          readCountMessage: kr.co.dataric.common.dto.ReadCountMessage
+          readCountMessage:kr.co.dataric.common.dto.ReadCountMessage,
+          chatRoomRedisDto:kr.co.dataric.common.dto.ChatRoomRedisDto,
+          chatMessageDTO:kr.co.dataric.common.dto.ChatMessageDTO,
+          readReceiptEvent:kr.co.dataric.common.dto.ReadReceiptEvent
 
   redis:
     host: 127.0.0.1
