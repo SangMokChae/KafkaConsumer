@@ -26,14 +26,11 @@ public class ChatRoomKafkaListener {
 
 	private final CustomChatRoomRepository customChatRoomRepository;
 	private final ReactiveRedisTemplate<String, String> redisTemplate;
-	private final ReactiveRedisConnectionFactory connectionFactory;
 	private final ObjectMapper objectMapper;
 	
 	@KafkaListener(topics = "chat.room.redis.update", groupId = "chat-room-group")
 	public void onChatRoomUpdate(ConsumerRecord<String, ChatRoomRedisDto> record) {
 		ChatRoomRedisDto dto = record.value();
-		
-		log.info("dto :: {}", dto);
 		
 		// 1. Mongo - chat_room 컬렉션의 마지막 메시지 업데이트
 		customChatRoomRepository.updateLastMessage(dto.getRoomId(), dto.getLastMessage(), dto.getLastMessageTime()).subscribe();

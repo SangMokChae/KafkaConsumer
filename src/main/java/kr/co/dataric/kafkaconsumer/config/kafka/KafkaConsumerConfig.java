@@ -32,7 +32,7 @@ public class KafkaConsumerConfig {
 		props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
 		props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "kr.co.dataric.common.dto");
-		props.put(JsonDeserializer.TYPE_MAPPINGS, "chatRoomRedisDto:kr.co.dataric.common.dto.ChatRoomRedisDto,chatMessageDTO:kr.co.dataric.common.dto.ChatMessageDTO");
+		props.put(JsonDeserializer.TYPE_MAPPINGS, "chatRoomRedisDto:kr.co.dataric.common.dto.ChatRoomRedisDto,chatMessageDTO:kr.co.dataric.common.dto.ChatMessageDTO,readReceiptEvent:kr.co.dataric.common.dto.ReadReceiptEvent");
 		
 		return new DefaultKafkaConsumerFactory<>(props);
 	}
