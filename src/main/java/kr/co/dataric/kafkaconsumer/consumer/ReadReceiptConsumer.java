@@ -1,13 +1,8 @@
 package kr.co.dataric.kafkaconsumer.consumer;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kr.co.dataric.common.dto.ChatRoomRedisDto;
 import kr.co.dataric.common.dto.ReadCountMessage;
 import kr.co.dataric.common.dto.ReadReceiptEvent;
-import kr.co.dataric.common.entity.ChatRoom;
-import kr.co.dataric.kafkaconsumer.repository.ChatRoomRepository;
-import kr.co.dataric.kafkaconsumer.repository.CustomChatRoomRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -19,6 +14,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -45,47 +41,57 @@ public class ReadReceiptConsumer {
 		String roomId = event.getRoomId();
 		String userId = event.getUserId();
 		String msgId = event.getMsgId();
+		String timestamp = String.valueOf(event.getTimestamp());
 		String key = READ_KEY_PREFIX + roomId + ":" + userId;
 		
 		// 1. 마지막 읽은 메시지 ID 갱신
 		redisTemplate.opsForValue()
-			.set(key, msgId, TTL)
-			.doOnSuccess(r -> log.info("✅ 읽음 상태 저장: {} → {}", key, msgId))
+			.set(key, msgId+"_"+timestamp, TTL)
+			.doOnSuccess(r -> log.info("✅ 읽음 상태 저장: {} → {}_{}", key, msgId, timestamp))
 			.subscribe();
 		
-		// 2. 참여자 목록 조회 → 읽지 않은 유저 수 계산
-		List<String> participants = event.getParticipants();
-		if (participants == null || participants.isEmpty()) {
-			log.warn("❌ ReadReceiptEvent 내 participants 누락: {}", event);
-			return;
-		}
-		
-		// 3. 읽지 않은 인원 계산 후 Pub/Sub 전송
-		calculateUnreadCount(roomId, msgId, participants)
-			.flatMap(readCount -> sendReadCount(roomId, msgId, readCount, event))
+		// ✅ 읽지 않은 인원 수 계산 후 Pub/Sub 전송
+		calculateUnreadCount(roomId, msgId, timestamp, userId, event.getParticipants())
+			.flatMap(readCount -> sendReadCount(roomId, userId, msgId, readCount, event))
 			.subscribe();
 	}
 	
 	private boolean isValid(ReadReceiptEvent event) {
-		return event != null && event.getRoomId() != null && event.getUserId() != null && event.getMsgId() != null;
+		return event != null && event.getRoomId() != null && event.getUserId() != null && event.getMsgId() != null && event.getTimestamp() != null;
 	}
 	
-	private Mono<Integer> calculateUnreadCount(String roomId, String msgId, List<String> participants) {
+	private Mono<Integer> calculateUnreadCount(String roomId, String msgId, String msgTimestamp, String sender, List<String> participants) {
 		return Flux.fromIterable(participants)
-			.flatMap(userId -> {
-				String key = "last_read:" + roomId + ":" + userId;
+			.filter(uid -> !uid.equals(sender))
+			.flatMap(uid -> {
+				String key = READ_KEY_PREFIX + roomId +":" +uid;
 				return redisTemplate.opsForValue().get(key)
-					.defaultIfEmpty("INITIAL")
-					.map(lastReadMsgId -> lastReadMsgId.compareTo(msgId) >= 0); // true면 읽음
+					.filter(Objects::nonNull) // null 방지
+					.map(lastRead -> {
+						if ("INITIAL".equals(lastRead)) return false;
+						String[] parts = lastRead.split("_");
+						if (parts.length < 2) return false;
+						
+						String lastMsgId = parts[0];
+						String lastTimestamp = parts[1];
+						
+						int timeCompare = lastTimestamp.compareTo(msgTimestamp);
+						if (timeCompare > 0) return true; // timestamp 최신
+						if (timeCompare == 0) {
+							return lastMsgId.compareTo(msgId) >= 0;
+						}
+						return false;
+					});
 			})
-			.filter(read -> !read)
+			.filter(isRead -> !isRead)
 			.count()
 			.map(Long::intValue);
 	}
 	
-	private Mono<Void> sendReadCount(String roomId, String msgId, Integer readCount, ReadReceiptEvent event) {
+	private Mono<Void> sendReadCount(String roomId, String userId, String msgId, Integer readCount, ReadReceiptEvent event) {
 		ReadCountMessage dto = ReadCountMessage.builder()
 			.roomId(roomId)
+			.userId(userId)
 			.msgId(msgId)
 			.readCount(readCount)
 			.lastMessageTime(event.getTimestamp())
